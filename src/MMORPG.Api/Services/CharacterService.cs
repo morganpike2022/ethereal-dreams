@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using MMORPG.Api.Data;
 using MMORPG.Api.DTOs;
@@ -64,6 +65,29 @@ public class CharacterService(ApplicationDbContext db) : ICharacterService
 
         character.Class = charClass;
         return ToSummary(character);
+    }
+
+    private static readonly Regex NameRegex =
+        new(@"^[A-Za-z][A-Za-z0-9\-']{1,31}$", RegexOptions.Compiled);
+
+    public async Task<NameValidationResponse> ValidateNameAsync(string name)
+    {
+        if (name.Length < 2 || name.Length > 32)
+            return new NameValidationResponse(false, "Name must be between 2 and 32 characters.");
+
+        if (!NameRegex.IsMatch(name))
+        {
+            if (!char.IsLetter(name[0]))
+                return new NameValidationResponse(false, "Name must start with a letter.");
+            return new NameValidationResponse(false, "Name may only contain letters, digits, hyphens, and apostrophes.");
+        }
+
+        var taken = await db.Characters
+            .AnyAsync(c => !c.IsDeleted && c.Name.ToLower() == name.ToLower());
+
+        return taken
+            ? new NameValidationResponse(false, "That name is already taken.")
+            : new NameValidationResponse(true);
     }
 
     public async Task DeleteAsync(Guid characterId, Guid playerId)

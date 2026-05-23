@@ -13,6 +13,19 @@ public class CharactersController(ICharacterService characterService) : Controll
 {
     private Guid PlayerId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
+    [HttpGet("validate-name")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(NameValidationResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ValidateName([FromQuery] string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return BadRequest(new ProblemDetails { Detail = "name query parameter is required." });
+
+        var result = await characterService.ValidateNameAsync(name);
+        return Ok(result);
+    }
+
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<CharacterSummaryDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetCharacters()
