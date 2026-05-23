@@ -32,6 +32,7 @@ public class Character
     public decimal PosX { get; set; }
     public decimal PosY { get; set; }
 
+    public string AppearanceData { get; set; } = "{}";
     public bool IsOnline { get; set; }
     public bool IsDeleted { get; set; }
     public DateTimeOffset? DeleteAt { get; set; }

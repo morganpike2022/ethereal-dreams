@@ -36,6 +36,8 @@ public class CharacterConfiguration : IEntityTypeConfiguration<Character>
         builder.Property(c => c.ZoneId).HasColumnName("zone_id");
         builder.Property(c => c.PosX).HasColumnName("pos_x").HasPrecision(10, 2).HasDefaultValue(0m);
         builder.Property(c => c.PosY).HasColumnName("pos_y").HasPrecision(10, 2).HasDefaultValue(0m);
+        builder.Property(c => c.AppearanceData).HasColumnName("appearance_data")
+               .HasColumnType("jsonb").HasDefaultValueSql("'{}'::jsonb");
         builder.Property(c => c.IsOnline).HasColumnName("is_online").HasDefaultValue(false);
         builder.Property(c => c.IsDeleted).HasColumnName("is_deleted").HasDefaultValue(false);
         builder.Property(c => c.DeleteAt).HasColumnName("delete_at");

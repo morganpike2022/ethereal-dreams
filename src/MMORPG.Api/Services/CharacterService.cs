@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using MMORPG.Api.Data;
@@ -17,6 +18,17 @@ public class CharacterService(ApplicationDbContext db) : ICharacterService
             .Include(c => c.Class)
             .Include(c => c.Zone)
             .Select(c => ToSummary(c))
+            .ToListAsync();
+    }
+
+    public async Task<IReadOnlyList<CharacterSelectDto>> GetSelectScreenAsync(Guid playerId)
+    {
+        return await db.Characters
+            .Where(c => c.PlayerId == playerId && !c.IsDeleted)
+            .Include(c => c.Class)
+            .Include(c => c.Zone)
+            .OrderBy(c => c.CreatedAt)
+            .Select(c => ToSelectDto(c))
             .ToListAsync();
     }
 
@@ -63,10 +75,13 @@ public class CharacterService(ApplicationDbContext db) : ICharacterService
         {
             var character = new Character
             {
-                Id           = Guid.NewGuid(),
-                PlayerId     = playerId,
-                ClassId      = charClass.Id,
-                Name         = request.Name,
+                Id             = Guid.NewGuid(),
+                PlayerId       = playerId,
+                ClassId        = charClass.Id,
+                Name           = request.Name,
+                AppearanceData = request.Appearance is not null
+                    ? JsonSerializer.Serialize(request.Appearance)
+                    : "{}",
                 Level        = 1,
                 CurrentHp    = charClass.BaseHp,
                 MaxHp        = charClass.BaseHp,
@@ -154,6 +169,16 @@ public class CharacterService(ApplicationDbContext db) : ICharacterService
         character.UpdatedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync();
     }
+
+    private static CharacterSelectDto ToSelectDto(Character c) => new(
+        c.Id, c.Name, c.Class?.DisplayName ?? string.Empty,
+        c.Level, c.Gold,
+        c.CurrentHp, c.MaxHp, c.CurrentMana, c.MaxMana,
+        new AttributesDto(c.Strength, c.Agility, c.Intelligence, c.Endurance, c.Spirit),
+        c.ZoneId, c.Zone?.Name,
+        c.IsOnline, c.AppearanceData,
+        c.CreatedAt, c.UpdatedAt
+    );
 
     private static CharacterSummaryDto ToSummary(Character c) => new(
         c.Id, c.Name, c.Class?.DisplayName ?? string.Empty,

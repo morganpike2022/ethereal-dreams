@@ -15,6 +15,25 @@ public record AppearanceData(
     string FaceType
 );
 
+public record CharacterSelectDto(
+    Guid Id,
+    string Name,
+    string ClassName,
+    short Level,
+    long Gold,
+    int CurrentHp,
+    int MaxHp,
+    int CurrentMana,
+    int MaxMana,
+    AttributesDto Attributes,
+    int? ZoneId,
+    string? ZoneName,
+    bool IsOnline,
+    string AppearanceData,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt
+);
+
 public record CharacterSummaryDto(
     Guid Id,
     string Name,

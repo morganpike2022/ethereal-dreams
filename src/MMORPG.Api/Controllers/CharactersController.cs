@@ -26,6 +26,14 @@ public class CharactersController(ICharacterService characterService) : Controll
         return Ok(result);
     }
 
+    [HttpGet("select")]
+    [ProducesResponseType(typeof(IReadOnlyList<CharacterSelectDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetSelectScreen()
+    {
+        var characters = await characterService.GetSelectScreenAsync(PlayerId);
+        return Ok(characters);
+    }
+
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<CharacterSummaryDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetCharacters()
