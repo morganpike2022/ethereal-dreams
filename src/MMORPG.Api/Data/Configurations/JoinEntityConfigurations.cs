@@ -254,3 +254,45 @@ public class ChatMessageConfiguration : IEntityTypeConfiguration<ChatMessage>
         builder.HasOne(m => m.Sender).WithMany().HasForeignKey(m => m.SenderId);
     }
 }
+
+public class SkillConfiguration : IEntityTypeConfiguration<Skill>
+{
+    public void Configure(EntityTypeBuilder<Skill> builder)
+    {
+        builder.ToTable("skills");
+        builder.HasKey(s => s.Id);
+        builder.Property(s => s.Id).HasColumnName("id");
+        builder.Property(s => s.ClassId).HasColumnName("class_id");
+        builder.Property(s => s.Name).HasColumnName("name").HasMaxLength(100).IsRequired();
+        builder.Property(s => s.Description).HasColumnName("description");
+        builder.Property(s => s.SkillType).HasColumnName("skill_type").HasMaxLength(50).IsRequired();
+        builder.Property(s => s.ManaCost).HasColumnName("mana_cost").HasDefaultValue(0);
+        builder.Property(s => s.CooldownSecs).HasColumnName("cooldown_secs").HasPrecision(6, 2).HasDefaultValue(0m);
+        builder.Property(s => s.MinLevel).HasColumnName("min_level").HasDefaultValue((short)1);
+        builder.Property(s => s.MaxRank).HasColumnName("max_rank").HasDefaultValue((short)1);
+        builder.Property(s => s.ParentSkillId).HasColumnName("parent_skill_id");
+        builder.Property(s => s.DamageBase).HasColumnName("damage_base");
+        builder.Property(s => s.DamageScaling).HasColumnName("damage_scaling").HasPrecision(5, 2);
+        builder.Property(s => s.HealBase).HasColumnName("heal_base");
+        builder.Property(s => s.EffectData).HasColumnName("effect_data").HasDefaultValue("{}");
+
+        builder.HasOne(s => s.Class).WithMany().HasForeignKey(s => s.ClassId).IsRequired(false);
+    }
+}
+
+public class CharacterSkillConfiguration : IEntityTypeConfiguration<CharacterSkill>
+{
+    public void Configure(EntityTypeBuilder<CharacterSkill> builder)
+    {
+        builder.ToTable("character_skills");
+        builder.HasKey(cs => new { cs.CharacterId, cs.SkillId });
+        builder.Property(cs => cs.CharacterId).HasColumnName("character_id");
+        builder.Property(cs => cs.SkillId).HasColumnName("skill_id");
+        builder.Property(cs => cs.CurrentRank).HasColumnName("current_rank").HasDefaultValue((short)1);
+        builder.Property(cs => cs.IsOnCooldown).HasColumnName("is_on_cooldown").HasDefaultValue(false);
+        builder.Property(cs => cs.CooldownEnds).HasColumnName("cooldown_ends");
+
+        builder.HasOne(cs => cs.Character).WithMany(c => c.Skills).HasForeignKey(cs => cs.CharacterId);
+        builder.HasOne(cs => cs.Skill).WithMany(s => s.CharacterSkills).HasForeignKey(cs => cs.SkillId);
+    }
+}

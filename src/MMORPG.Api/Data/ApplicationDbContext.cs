@@ -21,6 +21,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
     public DbSet<Achievement> Achievements => Set<Achievement>();
     public DbSet<CharacterAchievement> CharacterAchievements => Set<CharacterAchievement>();
+    public DbSet<Skill> Skills => Set<Skill>();
+    public DbSet<CharacterSkill> CharacterSkills => Set<CharacterSkill>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -1,6 +1,7 @@
 using System.Text;
 using System.Threading.RateLimiting;
 using FluentValidation;
+using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -78,6 +79,7 @@ builder.Services.AddScoped<ICharacterService, CharacterService>();
 
 // Validation
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+builder.Services.AddFluentValidationAutoValidation();
 
 // SignalR
 builder.Services.AddSignalR();

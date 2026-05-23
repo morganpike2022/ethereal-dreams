@@ -44,6 +44,7 @@ public class Character
     public Zone? Zone { get; set; }
     public ICollection<InventorySlot> Inventory { get; set; } = [];
     public ICollection<CharacterEquipment> Equipment { get; set; } = [];
+    public ICollection<CharacterSkill> Skills { get; set; } = [];
     public ICollection<CharacterQuest> Quests { get; set; } = [];
     public ICollection<CharacterAchievement> Achievements { get; set; } = [];
 }

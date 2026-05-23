@@ -33,6 +33,12 @@ public class CharacterService(ApplicationDbContext db) : ICharacterService
 
     public async Task<CharacterSummaryDto> CreateAsync(Guid playerId, CreateCharacterRequest request)
     {
+        // Global name uniqueness (case-insensitive, excludes soft-deleted)
+        var nameTaken = await db.Characters
+            .AnyAsync(c => !c.IsDeleted && c.Name.ToLower() == request.Name.ToLower());
+        if (nameTaken)
+            throw new InvalidOperationException("That name is already taken.");
+
         var count = await db.Characters.CountAsync(c => c.PlayerId == playerId && !c.IsDeleted);
         if (count >= MaxCharactersPerPlayer)
             throw new InvalidOperationException($"Maximum of {MaxCharactersPerPlayer} characters per account.");
@@ -40,31 +46,78 @@ public class CharacterService(ApplicationDbContext db) : ICharacterService
         var charClass = await db.CharacterClasses.FindAsync(request.ClassId)
             ?? throw new KeyNotFoundException("Invalid class.");
 
-        var character = new Character
+        // Load starting skills for the class before opening the transaction
+        var startingSkills = await db.Skills
+            .Where(s => s.ClassId == request.ClassId && s.MinLevel == 1)
+            .ToListAsync();
+
+        // Load starter item for slot 0 (Novice Health Potion, id=1) if it exists
+        var starterItem = await db.Items.FindAsync(1);
+
+        // Atomic transaction: characters + character_skills + inventory
+        // IsRelational() guard lets InMemory unit tests run without transaction support
+        await using var tx = db.Database.IsRelational()
+            ? await db.Database.BeginTransactionAsync()
+            : null;
+        try
         {
-            Id           = Guid.NewGuid(),
-            PlayerId     = playerId,
-            ClassId      = charClass.Id,
-            Name         = request.Name,
-            Level        = 1,
-            CurrentHp    = charClass.BaseHp,
-            MaxHp        = charClass.BaseHp,
-            CurrentMana  = charClass.BaseMana,
-            MaxMana      = charClass.BaseMana,
-            Strength     = charClass.BaseStrength,
-            Agility      = charClass.BaseAgility,
-            Intelligence = charClass.BaseIntelligence,
-            Endurance    = charClass.BaseEndurance,
-            Spirit       = charClass.BaseSpirit,
-            CreatedAt    = DateTimeOffset.UtcNow,
-            UpdatedAt    = DateTimeOffset.UtcNow
-        };
+            var character = new Character
+            {
+                Id           = Guid.NewGuid(),
+                PlayerId     = playerId,
+                ClassId      = charClass.Id,
+                Name         = request.Name,
+                Level        = 1,
+                CurrentHp    = charClass.BaseHp,
+                MaxHp        = charClass.BaseHp,
+                CurrentMana  = charClass.BaseMana,
+                MaxMana      = charClass.BaseMana,
+                Strength     = charClass.BaseStrength,
+                Agility      = charClass.BaseAgility,
+                Intelligence = charClass.BaseIntelligence,
+                Endurance    = charClass.BaseEndurance,
+                Spirit       = charClass.BaseSpirit,
+                CreatedAt    = DateTimeOffset.UtcNow,
+                UpdatedAt    = DateTimeOffset.UtcNow
+            };
+            db.Characters.Add(character);
 
-        db.Characters.Add(character);
-        await db.SaveChangesAsync();
+            // Table 2: character_skills — seed all class skills at rank 1
+            foreach (var skill in startingSkills)
+            {
+                db.CharacterSkills.Add(new CharacterSkill
+                {
+                    CharacterId = character.Id,
+                    SkillId     = skill.Id,
+                    CurrentRank = 1
+                });
+            }
 
-        character.Class = charClass;
-        return ToSummary(character);
+            // Table 3: inventory — slot 0 gets 5x Novice Health Potions if item exists
+            if (starterItem is not null)
+            {
+                db.Inventory.Add(new InventorySlot
+                {
+                    Id          = Guid.NewGuid(),
+                    CharacterId = character.Id,
+                    ItemId      = starterItem.Id,
+                    Quantity    = 5,
+                    SlotIndex   = 0,
+                    AcquiredAt  = DateTimeOffset.UtcNow
+                });
+            }
+
+            await db.SaveChangesAsync();
+            if (tx is not null) await tx.CommitAsync();
+
+            character.Class = charClass;
+            return ToSummary(character);
+        }
+        catch
+        {
+            if (tx is not null) await tx.RollbackAsync();
+            throw;
+        }
     }
 
     private static readonly Regex NameRegex =
