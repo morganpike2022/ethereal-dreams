@@ -26,7 +26,11 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
-        modelBuilder.HasPostgresExtension("uuid-ossp");
-        modelBuilder.HasPostgresExtension("pgcrypto");
+
+        if (Database.IsNpgsql())
+        {
+            modelBuilder.HasPostgresExtension("uuid-ossp");
+            modelBuilder.HasPostgresExtension("pgcrypto");
+        }
     }
 }

@@ -135,8 +135,11 @@ app.UseSerilogRequestLogging();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapControllers();
+app.MapControllers().RequireRateLimiting("global");
 app.MapHealthChecks("/health/live");
 app.MapHealthChecks("/health/ready");
 
 app.Run();
+
+// Expose Program to WebApplicationFactory in the test project
+public partial class Program { }

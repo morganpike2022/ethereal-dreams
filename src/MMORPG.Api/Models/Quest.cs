@@ -1,5 +1,3 @@
-using System.Text.Json;
-
 namespace MMORPG.Api.Models;
 
 public class Quest
@@ -18,8 +16,8 @@ public class Quest
     public bool IsRepeatable { get; set; }
     public int XpReward { get; set; }
     public int GoldReward { get; set; }
-    public JsonDocument Objectives { get; set; } = JsonDocument.Parse("[]");
-    public JsonDocument RewardItems { get; set; } = JsonDocument.Parse("[]");
+    public string Objectives { get; set; } = "[]";
+    public string RewardItems { get; set; } = "[]";
     public DateTimeOffset CreatedAt { get; set; }
 }
 
@@ -29,7 +27,7 @@ public class CharacterQuest
     public Guid CharacterId { get; set; }
     public int QuestId { get; set; }
     public string Status { get; set; } = "in_progress";
-    public JsonDocument Progress { get; set; } = JsonDocument.Parse("{}");
+    public string Progress { get; set; } = "{}";
     public DateTimeOffset AcceptedAt { get; set; }
     public DateTimeOffset? CompletedAt { get; set; }
 
