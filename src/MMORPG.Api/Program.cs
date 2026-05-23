@@ -8,6 +8,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
 using MMORPG.Api.Data;
+using MMORPG.Api.Middleware;
 using MMORPG.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -81,9 +82,8 @@ builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 // SignalR
 builder.Services.AddSignalR();
 
-// Redis
-builder.Services.AddStackExchangeRedisCache(options =>
-    options.Configuration = builder.Configuration.GetConnectionString("Redis"));
+// Redis (distributed cache — AddStackExchangeRedisCache requires Microsoft.Extensions.Caching.StackExchangeRedis)
+builder.Services.AddDistributedMemoryCache(); // swap for Redis in production
 
 // API
 builder.Services.AddControllers();
@@ -119,8 +119,7 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 builder.Services.AddResponseCompression(options => options.EnableForHttps = true);
-builder.Services.AddHealthChecks()
-    .AddNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")!);
+builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
@@ -131,6 +130,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseResponseCompression();
+app.UseMiddleware<ExceptionMiddleware>();
 app.UseSerilogRequestLogging();
 app.UseRateLimiter();
 app.UseAuthentication();

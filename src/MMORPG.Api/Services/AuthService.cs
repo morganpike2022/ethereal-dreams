@@ -25,7 +25,7 @@ public class AuthService(ApplicationDbContext db, IConfiguration config) : IAuth
             Id           = Guid.NewGuid(),
             Username     = request.Username,
             Email        = request.Email.ToLower(),
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password, workFactor: 12),
             CreatedAt    = DateTimeOffset.UtcNow,
             UpdatedAt    = DateTimeOffset.UtcNow
         };
