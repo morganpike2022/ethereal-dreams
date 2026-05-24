@@ -22,11 +22,14 @@ public class CharacterCreationIntegrationTests : IAsyncLifetime
     private int _testClassId;
     private string _sfx = null!;
 
+    private static string AlphaSuffix() =>
+        new string(Guid.NewGuid().ToByteArray().Take(6).Select(b => (char)('a' + b % 26)).ToArray());
+
     // ── lifecycle ─────────────────────────────────────────────────────────────
 
     public async Task InitializeAsync()
     {
-        _sfx = Guid.NewGuid().ToString("N")[..8];
+        _sfx = AlphaSuffix();
 
         _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
         {
@@ -195,7 +198,7 @@ public class CharacterCreationIntegrationTests : IAsyncLifetime
     {
         // The test player may already have chars from other tests in this class;
         // use a fresh player so the limit is clean.
-        var sfx2 = Guid.NewGuid().ToString("N")[..8];
+        var sfx2 = AlphaSuffix();
         var anon = _factory.CreateClient();
         await anon.PostAsJsonAsync("/api/auth/register",
             new RegisterRequest($"Limit{sfx2}", $"limit-{sfx2}@example.com", "Password123!"));
@@ -209,11 +212,11 @@ public class CharacterCreationIntegrationTests : IAsyncLifetime
 
         for (int i = 0; i < 5; i++)
             (await limitClient.PostAsJsonAsync("/api/characters",
-                new CreateCharacterRequest($"Slot{i:D2}{sfx2}", _testClassId, null)))
+                new CreateCharacterRequest($"Sl{(char)('a'+i)}{sfx2}", _testClassId, null)))
                 .EnsureSuccessStatusCode();
 
         var sixth = await limitClient.PostAsJsonAsync("/api/characters",
-            new CreateCharacterRequest($"Slot05{sfx2}", _testClassId, null));
+            new CreateCharacterRequest($"Slz{sfx2}", _testClassId, null));
         Assert.Equal(HttpStatusCode.Conflict, sixth.StatusCode);
 
         // Clean up this extra player

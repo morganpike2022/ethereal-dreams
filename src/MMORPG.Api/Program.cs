@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
+using MMORPG.Api.Configuration;
 using MMORPG.Api.Data;
 using MMORPG.Api.Middleware;
 using MMORPG.Api.Services;
@@ -84,6 +85,8 @@ builder.Services.AddRateLimiter(options =>
 });
 
 // Application services
+builder.Services.Configure<NameValidationOptions>(
+    builder.Configuration.GetSection(NameValidationOptions.SectionName));
 builder.Services.AddSingleton<ICacheService, CacheService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ICharacterService, CharacterService>();

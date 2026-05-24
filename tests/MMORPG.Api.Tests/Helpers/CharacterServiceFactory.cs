@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using MMORPG.Api.Configuration;
 using MMORPG.Api.Data;
 using MMORPG.Api.Services;
 
@@ -22,9 +24,10 @@ public static class CharacterServiceFactory
             .UseInMemoryDatabase(dbName ?? Guid.NewGuid().ToString())
             .Options;
 
-        var db    = new ApplicationDbContext(options);
-        var cache = BuildCache();
-        return (new CharacterService(db, cache), db, cache);
+        var db       = new ApplicationDbContext(options);
+        var cache    = BuildCache();
+        var nameOpts = Options.Create(new NameValidationOptions());
+        return (new CharacterService(db, cache, nameOpts), db, cache);
     }
 
     internal static ICacheService BuildCache()

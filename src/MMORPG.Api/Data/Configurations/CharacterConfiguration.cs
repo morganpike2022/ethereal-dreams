@@ -14,7 +14,7 @@ public class CharacterConfiguration : IEntityTypeConfiguration<Character>
         builder.Property(c => c.Id).HasColumnName("id").HasDefaultValueSql("uuid_generate_v4()");
         builder.Property(c => c.PlayerId).HasColumnName("player_id").IsRequired();
         builder.Property(c => c.ClassId).HasColumnName("class_id").IsRequired();
-        builder.Property(c => c.Name).HasColumnName("name").HasMaxLength(32).IsRequired();
+        builder.Property(c => c.Name).HasColumnName("name").HasMaxLength(20).IsRequired();
         builder.Property(c => c.Level).HasColumnName("level").HasDefaultValue((short)1);
         builder.Property(c => c.Experience).HasColumnName("experience").HasDefaultValue(0L);
         builder.Property(c => c.Gold).HasColumnName("gold").HasDefaultValue(0L);
@@ -46,6 +46,10 @@ public class CharacterConfiguration : IEntityTypeConfiguration<Character>
 
         builder.HasIndex(c => c.PlayerId);
         builder.HasIndex(c => c.ZoneId);
+        // Standard index on name for exact-match lookups; apply the functional
+        // index LOWER(name) separately via: CREATE INDEX CONCURRENTLY
+        // ix_characters_name_lower ON characters (LOWER(name));
+        builder.HasIndex(c => c.Name).HasDatabaseName("ix_characters_name");
         builder.HasQueryFilter(c => !c.IsDeleted);
 
         builder.HasOne(c => c.Class)

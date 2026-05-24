@@ -23,11 +23,14 @@ public class CharacterSelectIntegrationTests : IAsyncLifetime
 
     private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
 
+    private static string AlphaSuffix() =>
+        new string(Guid.NewGuid().ToByteArray().Take(6).Select(b => (char)('a' + b % 26)).ToArray());
+
     // ── lifecycle ─────────────────────────────────────────────────────────────
 
     public async Task InitializeAsync()
     {
-        _sfx = Guid.NewGuid().ToString("N")[..8];
+        _sfx = AlphaSuffix();
 
         _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
         {
@@ -106,7 +109,7 @@ public class CharacterSelectIntegrationTests : IAsyncLifetime
         // filter to make the assertion stable across parallel test methods.
         // (Each test in this class shares the same player — that's intentional
         // to match ETH-4's pattern, but empty-account test uses a fresh player.)
-        var sfx2 = Guid.NewGuid().ToString("N")[..8];
+        var sfx2 = AlphaSuffix();
         var anon  = _factory.CreateClient();
         await anon.PostAsJsonAsync("/api/auth/register",
             new RegisterRequest($"Fresh{sfx2}", $"fresh-{sfx2}@example.com", "Password123!"));

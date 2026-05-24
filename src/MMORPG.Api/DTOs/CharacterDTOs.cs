@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 namespace MMORPG.Api.DTOs;
 
 public record CreateCharacterRequest(
-    [Required, MinLength(2), MaxLength(32)] string Name,
+    [Required, MinLength(3), MaxLength(20)] string Name,
     [Required] int ClassId,
     AppearanceData? Appearance
 );

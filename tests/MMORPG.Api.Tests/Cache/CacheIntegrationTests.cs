@@ -28,11 +28,14 @@ public class CacheIntegrationTests : IAsyncLifetime
     private static readonly JsonSerializerOptions JsonOpts =
         new() { PropertyNameCaseInsensitive = true };
 
+    private static string AlphaSuffix() =>
+        new string(Guid.NewGuid().ToByteArray().Take(6).Select(b => (char)('a' + b % 26)).ToArray());
+
     // ── lifecycle ─────────────────────────────────────────────────────────────
 
     public async Task InitializeAsync()
     {
-        _sfx = Guid.NewGuid().ToString("N")[..8];
+        _sfx = AlphaSuffix();
 
         _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
         {
@@ -141,12 +144,12 @@ public class CacheIntegrationTests : IAsyncLifetime
     [Fact]
     public async Task SelectScreen_ForceRefresh_ReturnsFreshData()
     {
-        var char1 = await CreateCharAsync($"Frsh1-{_sfx}");
+        var char1 = await CreateCharAsync($"FrshA{_sfx}");
 
         // Populate cache (only char1 is in it from this player at this point)
         await GetSelectAsync();
 
-        var char2 = await CreateCharAsync($"Frsh2-{_sfx}");
+        var char2 = await CreateCharAsync($"FrshB{_sfx}");
         // Cache was invalidated by CreateAsync; restore it with only char1 data by
         // calling the normal endpoint — but char2 now exists so cache will have both.
         // Re-seed with forceRefresh to confirm both appear via DB read.

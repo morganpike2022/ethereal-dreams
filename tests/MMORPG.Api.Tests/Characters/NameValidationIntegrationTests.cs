@@ -23,11 +23,14 @@ public class NameValidationIntegrationTests : IAsyncLifetime
     private int _testClassId;
     private string _sfx = null!;         // unique suffix so tests never collide in the shared DB
 
+    private static string AlphaSuffix() =>
+        new string(Guid.NewGuid().ToByteArray().Take(6).Select(b => (char)('a' + b % 26)).ToArray());
+
     // ── lifecycle ─────────────────────────────────────────────────────────────
 
     public async Task InitializeAsync()
     {
-        _sfx = Guid.NewGuid().ToString("N")[..8];
+        _sfx = AlphaSuffix();
 
         _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
         {
@@ -181,17 +184,45 @@ public class NameValidationIntegrationTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
         var body = (await resp.Content.ReadFromJsonAsync<NameValidationResponse>())!;
         Assert.False(body.Available);
-        Assert.Contains("2 and 32", body.Reason);
+        Assert.Contains("3 and 20", body.Reason);
     }
 
     [Fact]
     public async Task TooLong_Returns200_Unavailable()
     {
-        var resp = await _anon.GetAsync($"/api/characters/validate-name?name={new string('A', 33)}");
+        var resp = await _anon.GetAsync($"/api/characters/validate-name?name={new string('A', 21)}");
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
         var body = (await resp.Content.ReadFromJsonAsync<NameValidationResponse>())!;
         Assert.False(body.Available);
-        Assert.Contains("2 and 32", body.Reason);
+        Assert.Contains("3 and 20", body.Reason);
+    }
+
+    [Fact]
+    public async Task BlocklistedName_Returns200_Unavailable()
+    {
+        var resp = await _anon.GetAsync("/api/characters/validate-name?name=Admin");
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        var body = (await resp.Content.ReadFromJsonAsync<NameValidationResponse>())!;
+        Assert.False(body.Available);
+        Assert.Contains("reserved", body.Reason);
+    }
+
+    [Fact]
+    public async Task ConsecutiveHyphens_Returns200_Unavailable()
+    {
+        var resp = await _anon.GetAsync("/api/characters/validate-name?name=Half--Elf");
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        var body = (await resp.Content.ReadFromJsonAsync<NameValidationResponse>())!;
+        Assert.False(body.Available);
+    }
+
+    [Fact]
+    public async Task NameWithDigit_Returns200_Unavailable()
+    {
+        var resp = await _anon.GetAsync("/api/characters/validate-name?name=Her2o");
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        var body = (await resp.Content.ReadFromJsonAsync<NameValidationResponse>())!;
+        Assert.False(body.Available);
     }
 
     [Fact]
