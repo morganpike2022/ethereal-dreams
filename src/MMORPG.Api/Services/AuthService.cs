@@ -10,7 +10,7 @@ using MMORPG.Api.Models;
 
 namespace MMORPG.Api.Services;
 
-public class AuthService(ApplicationDbContext db, IConfiguration config) : IAuthService
+public class AuthService(ApplicationDbContext db, IConfiguration config, ICacheService cache) : IAuthService
 {
     public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
     {
@@ -129,6 +129,16 @@ public class AuthService(ApplicationDbContext db, IConfiguration config) : IAuth
 
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
+
+    public async Task BlacklistJtiAsync(string jti, DateTimeOffset tokenExpiry)
+    {
+        var remaining = tokenExpiry - DateTimeOffset.UtcNow;
+        if (remaining > TimeSpan.Zero)
+            await cache.SetAsync(CacheKeys.JtiRevoked(jti), "1", remaining);
+    }
+
+    public Task<bool> IsJtiRevokedAsync(string jti)
+        => cache.ExistsAsync(CacheKeys.JtiRevoked(jti));
 
     private static string HashToken(string token)
     {

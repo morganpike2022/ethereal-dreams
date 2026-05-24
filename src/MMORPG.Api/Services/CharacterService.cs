@@ -7,9 +7,12 @@ using MMORPG.Api.Models;
 
 namespace MMORPG.Api.Services;
 
-public class CharacterService(ApplicationDbContext db) : ICharacterService
+public class CharacterService(ApplicationDbContext db, ICacheService cache) : ICharacterService
 {
     private const int MaxCharactersPerPlayer = 5;
+
+    private static readonly TimeSpan SelectScreenTtl   = TimeSpan.FromMinutes(2);
+    private static readonly TimeSpan NameValidationTtl = TimeSpan.FromSeconds(30);
 
     public async Task<IReadOnlyList<CharacterSummaryDto>> GetByPlayerAsync(Guid playerId)
     {
@@ -21,15 +24,27 @@ public class CharacterService(ApplicationDbContext db) : ICharacterService
             .ToListAsync();
     }
 
-    public async Task<IReadOnlyList<CharacterSelectDto>> GetSelectScreenAsync(Guid playerId)
+    public async Task<IReadOnlyList<CharacterSelectDto>> GetSelectScreenAsync(Guid playerId, bool forceRefresh = false)
     {
-        return await db.Characters
+        var key = CacheKeys.CharacterSelect(playerId);
+
+        if (!forceRefresh)
+        {
+            var cached = await cache.GetAsync<List<CharacterSelectDto>>(key);
+            if (cached is not null)
+                return cached;
+        }
+
+        var result = await db.Characters
             .Where(c => c.PlayerId == playerId && !c.IsDeleted)
             .Include(c => c.Class)
             .Include(c => c.Zone)
             .OrderBy(c => c.CreatedAt)
             .Select(c => ToSelectDto(c))
             .ToListAsync();
+
+        await cache.SetAsync(key, result, SelectScreenTtl);
+        return result;
     }
 
     public async Task<CharacterSheetDto> GetSheetAsync(Guid characterId, Guid playerId)
@@ -125,6 +140,10 @@ public class CharacterService(ApplicationDbContext db) : ICharacterService
             await db.SaveChangesAsync();
             if (tx is not null) await tx.CommitAsync();
 
+            // Invalidate caches: select screen for this player + name availability
+            await cache.RemoveAsync(CacheKeys.CharacterSelect(playerId));
+            await cache.RemoveAsync(CacheKeys.NameAvailable(request.Name));
+
             character.Class = charClass;
             return ToSummary(character);
         }
@@ -150,12 +169,20 @@ public class CharacterService(ApplicationDbContext db) : ICharacterService
             return new NameValidationResponse(false, "Name may only contain letters, digits, hyphens, and apostrophes.");
         }
 
+        var key = CacheKeys.NameAvailable(name);
+        var cached = await cache.GetAsync<NameValidationResponse>(key);
+        if (cached is not null)
+            return cached;
+
         var taken = await db.Characters
             .AnyAsync(c => !c.IsDeleted && c.Name.ToLower() == name.ToLower());
 
-        return taken
+        var response = taken
             ? new NameValidationResponse(false, "That name is already taken.")
             : new NameValidationResponse(true);
+
+        await cache.SetAsync(key, response, NameValidationTtl);
+        return response;
     }
 
     public async Task DeleteAsync(Guid characterId, Guid playerId)
@@ -168,6 +195,8 @@ public class CharacterService(ApplicationDbContext db) : ICharacterService
         character.DeleteAt = DateTimeOffset.UtcNow.AddHours(24);
         character.UpdatedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync();
+
+        await cache.RemoveAsync(CacheKeys.CharacterSelect(playerId));
     }
 
     private static CharacterSelectDto ToSelectDto(Character c) => new(

@@ -1,3 +1,6 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MMORPG.Api.DTOs;
 using MMORPG.Api.Services;
@@ -58,10 +61,19 @@ public class AuthController(IAuthService authService) : ControllerBase
     }
 
     [HttpPost("logout")]
+    [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Logout([FromBody] RefreshRequest request)
     {
         await authService.RevokeAsync(request.RefreshToken);
+
+        // Blacklist the access token's JTI for its remaining lifetime so it is
+        // rejected immediately on subsequent requests rather than at natural expiry.
+        var jti      = User.FindFirstValue(JwtRegisteredClaimNames.Jti);
+        var expClaim = User.FindFirstValue(JwtRegisteredClaimNames.Exp);
+        if (jti is not null && expClaim is not null && long.TryParse(expClaim, out var expUnix))
+            await authService.BlacklistJtiAsync(jti, DateTimeOffset.FromUnixTimeSeconds(expUnix));
+
         return NoContent();
     }
 }

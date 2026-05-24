@@ -28,9 +28,9 @@ public class CharactersController(ICharacterService characterService) : Controll
 
     [HttpGet("select")]
     [ProducesResponseType(typeof(IReadOnlyList<CharacterSelectDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetSelectScreen()
+    public async Task<IActionResult> GetSelectScreen([FromQuery] bool forceRefresh = false)
     {
-        var characters = await characterService.GetSelectScreenAsync(PlayerId);
+        var characters = await characterService.GetSelectScreenAsync(PlayerId, forceRefresh);
         return Ok(characters);
     }
 

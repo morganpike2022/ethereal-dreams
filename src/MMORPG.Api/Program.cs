@@ -1,3 +1,5 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
 using FluentValidation;
@@ -45,7 +47,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ClockSkew                = TimeSpan.Zero
         };
 
-        // Allow JWT from SignalR query string
+        // Allow JWT from SignalR query string; check JTI blacklist on every validated token
         options.Events = new JwtBearerEvents
         {
             OnMessageReceived = ctx =>
@@ -54,6 +56,14 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 if (!string.IsNullOrEmpty(token) && ctx.Request.Path.StartsWithSegments("/hubs"))
                     ctx.Token = token;
                 return Task.CompletedTask;
+            },
+            OnTokenValidated = async ctx =>
+            {
+                var jti = ctx.Principal?.FindFirstValue(JwtRegisteredClaimNames.Jti);
+                if (jti is null) return;
+                var cacheService = ctx.HttpContext.RequestServices.GetRequiredService<ICacheService>();
+                if (await cacheService.ExistsAsync(CacheKeys.JtiRevoked(jti)))
+                    ctx.Fail("Token has been revoked.");
             }
         };
     });
@@ -74,6 +84,7 @@ builder.Services.AddRateLimiter(options =>
 });
 
 // Application services
+builder.Services.AddSingleton<ICacheService, CacheService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ICharacterService, CharacterService>();
 
