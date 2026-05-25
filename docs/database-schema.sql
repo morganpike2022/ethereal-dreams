@@ -791,3 +791,17 @@ VALUES
     ('Verdenmoor',  'Lush tropical islands inhabited by elves and deep jungle creatures.'),
     ('The Ashlands', 'A volcanic wasteland cursed by an ancient cataclysm.'),
     ('The Abyssal Deep', 'Mysterious undersea caverns, accessible only to high-level adventurers.');
+
+-- id = 1, referenced by CharacterService.CreateAsync as the starter item
+INSERT INTO items (name, description, item_type, rarity, is_stackable, max_stack, sell_price, buy_price)
+VALUES ('Novice Health Potion', 'A basic healing potion for new adventurers.', 'consumable', 'common', TRUE, 99, 2, 5);
+
+-- one level-1 starter skill per class (class IDs follow the character_classes insert order above)
+INSERT INTO skills (class_id, name, description, skill_type, mana_cost, min_level, max_rank)
+VALUES
+    (1, 'Heroic Strike',  'A powerful melee attack.',          'active', 10, 1, 5),
+    (2, 'Fireball',       'Launches a ball of fire.',           'active', 20, 1, 5),
+    (3, 'Backstab',       'Strike from the shadows.',           'active', 10, 1, 5),
+    (4, 'Holy Strike',    'A strike imbued with holy light.',   'active', 15, 1, 5),
+    (5, 'Arrow Shot',     'Fire a swift arrow.',                'active',  5, 1, 5),
+    (6, 'Shadow Bolt',    'Unleash a bolt of dark energy.',     'active', 20, 1, 5);

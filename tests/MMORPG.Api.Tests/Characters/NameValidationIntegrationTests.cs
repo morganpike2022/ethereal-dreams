@@ -6,22 +6,27 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using MMORPG.Api.Data;
 using MMORPG.Api.DTOs;
+using MMORPG.Api.Tests.Fixtures;
 
 namespace MMORPG.Api.Tests.Characters;
 
 /// <summary>
-/// End-to-end tests against the real PostgreSQL database (ethereal_dreams_dev).
-/// Each test class instance registers a unique player, runs its tests, then
+/// End-to-end tests against a Testcontainers PostgreSQL instance.
+/// Each test method registers a unique player, runs its assertions, then
 /// hard-deletes the player — cascade takes care of characters + refresh tokens.
 /// </summary>
-public class NameValidationIntegrationTests : IAsyncLifetime
+public class NameValidationIntegrationTests : IAsyncLifetime, IClassFixture<PostgreSqlContainerFixture>
 {
+    private readonly PostgreSqlContainerFixture _pgFixture;
     private WebApplicationFactory<Program> _factory = null!;
     private HttpClient _anon = null!;     // no auth — for validate-name calls
     private HttpClient _authed = null!;   // Bearer token — for character creation/deletion
     private Guid _testPlayerId;
     private int _testClassId;
-    private string _sfx = null!;         // unique suffix so tests never collide in the shared DB
+    private string _sfx = null!;         // unique suffix so tests never collide
+
+    public NameValidationIntegrationTests(PostgreSqlContainerFixture pgFixture)
+        => _pgFixture = pgFixture;
 
     private static string AlphaSuffix() =>
         new string(Guid.NewGuid().ToByteArray().Take(6).Select(b => (char)('a' + b % 26)).ToArray());
@@ -35,14 +40,13 @@ public class NameValidationIntegrationTests : IAsyncLifetime
         _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
         {
             b.UseSetting("ASPNETCORE_ENVIRONMENT", "Development");
-            b.UseSetting("ConnectionStrings:DefaultConnection",
-                "Host=localhost;Port=5432;Database=ethereal_dreams_dev;Username=postgres;Password=postgres");
+            b.UseSetting("ConnectionStrings:DefaultConnection", _pgFixture.ConnectionString);
             b.UseSetting("Jwt:SecretKey", "PJF/T2KXleIVA6gb3MPfKeiRnbgi6c1RJA8rOxicN5w=");
             b.UseSetting("Jwt:Issuer", "ethereal-dreams-api");
             b.UseSetting("Jwt:Audience", "ethereal-dreams-client");
             b.UseSetting("Jwt:AccessTokenExpiryMinutes", "15");
             b.UseSetting("Jwt:RefreshTokenExpiryDays", "7");
-            b.UseSetting("RateLimit:PermitLimit", "1000"); // keep rate limiter out of the way
+            b.UseSetting("RateLimit:PermitLimit", "1000");
             b.UseSetting("RateLimit:WindowSeconds", "60");
         });
 

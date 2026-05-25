@@ -6,21 +6,26 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using MMORPG.Api.Data;
 using MMORPG.Api.DTOs;
+using MMORPG.Api.Tests.Fixtures;
 
 namespace MMORPG.Api.Tests.Characters;
 
 /// <summary>
-/// End-to-end integration tests for POST /api/characters against real PostgreSQL.
+/// End-to-end integration tests for POST /api/characters against a Testcontainers PostgreSQL instance.
 /// Covers the 3-table transaction, stat seeding, skill seeding, inventory seeding,
 /// and the chaos rollback scenario.
 /// </summary>
-public class CharacterCreationIntegrationTests : IAsyncLifetime
+public class CharacterCreationIntegrationTests : IAsyncLifetime, IClassFixture<PostgreSqlContainerFixture>
 {
+    private readonly PostgreSqlContainerFixture _pgFixture;
     private WebApplicationFactory<Program> _factory = null!;
     private HttpClient _authed = null!;
     private Guid _testPlayerId;
     private int _testClassId;
     private string _sfx = null!;
+
+    public CharacterCreationIntegrationTests(PostgreSqlContainerFixture pgFixture)
+        => _pgFixture = pgFixture;
 
     private static string AlphaSuffix() =>
         new string(Guid.NewGuid().ToByteArray().Take(6).Select(b => (char)('a' + b % 26)).ToArray());
@@ -34,8 +39,7 @@ public class CharacterCreationIntegrationTests : IAsyncLifetime
         _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
         {
             b.UseSetting("ASPNETCORE_ENVIRONMENT", "Development");
-            b.UseSetting("ConnectionStrings:DefaultConnection",
-                "Host=localhost;Port=5432;Database=ethereal_dreams_dev;Username=postgres;Password=postgres");
+            b.UseSetting("ConnectionStrings:DefaultConnection", _pgFixture.ConnectionString);
             b.UseSetting("Jwt:SecretKey", "PJF/T2KXleIVA6gb3MPfKeiRnbgi6c1RJA8rOxicN5w=");
             b.UseSetting("Jwt:Issuer", "ethereal-dreams-api");
             b.UseSetting("Jwt:Audience", "ethereal-dreams-client");

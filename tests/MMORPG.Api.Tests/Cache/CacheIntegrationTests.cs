@@ -8,15 +8,17 @@ using Microsoft.Extensions.DependencyInjection;
 using MMORPG.Api.Data;
 using MMORPG.Api.DTOs;
 using MMORPG.Api.Services;
+using MMORPG.Api.Tests.Fixtures;
 
 namespace MMORPG.Api.Tests.Cache;
 
 /// <summary>
-/// Integration tests for the Redis/IDistributedCache layer against real PostgreSQL.
+/// Integration tests for the IDistributedCache layer against a Testcontainers PostgreSQL instance.
 /// Verifies cache population, invalidation, force-refresh, and JTI blacklisting.
 /// </summary>
-public class CacheIntegrationTests : IAsyncLifetime
+public class CacheIntegrationTests : IAsyncLifetime, IClassFixture<PostgreSqlContainerFixture>
 {
+    private readonly PostgreSqlContainerFixture _pgFixture;
     private WebApplicationFactory<Program> _factory = null!;
     private HttpClient _authed = null!;
     private Guid _testPlayerId;
@@ -24,6 +26,9 @@ public class CacheIntegrationTests : IAsyncLifetime
     private string _sfx = null!;
     private string _accessToken = null!;
     private string _refreshToken = null!;
+
+    public CacheIntegrationTests(PostgreSqlContainerFixture pgFixture)
+        => _pgFixture = pgFixture;
 
     private static readonly JsonSerializerOptions JsonOpts =
         new() { PropertyNameCaseInsensitive = true };
@@ -40,8 +45,7 @@ public class CacheIntegrationTests : IAsyncLifetime
         _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
         {
             b.UseSetting("ASPNETCORE_ENVIRONMENT", "Development");
-            b.UseSetting("ConnectionStrings:DefaultConnection",
-                "Host=localhost;Port=5432;Database=ethereal_dreams_dev;Username=postgres;Password=postgres");
+            b.UseSetting("ConnectionStrings:DefaultConnection", _pgFixture.ConnectionString);
             b.UseSetting("Jwt:SecretKey", "PJF/T2KXleIVA6gb3MPfKeiRnbgi6c1RJA8rOxicN5w=");
             b.UseSetting("Jwt:Issuer",    "ethereal-dreams-api");
             b.UseSetting("Jwt:Audience",  "ethereal-dreams-client");
